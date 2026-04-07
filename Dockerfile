@@ -11,14 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python dependencies first (layer cache)
-COPY clinical_triage_env/server/requirements.txt /tmp/requirements.txt
+COPY server/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy full project
 COPY . /app/
 
-# Install the env package itself (editable for dev, regular for prod)
-RUN pip install --no-cache-dir -e .
+# Install the env package itself
+RUN pip install --no-cache-dir .
 
 # Health check — HF Spaces pings /health
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
@@ -28,7 +28,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 EXPOSE 7860
 
 # Run the FastAPI server
-CMD ["uvicorn", "clinical_triage_env.server.app:app", \
+CMD ["uvicorn", "server.app:app", \
      "--host", "0.0.0.0", \
      "--port", "7860", \
      "--workers", "1"]
