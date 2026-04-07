@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=[
-        "openenv-core>=0.2.0",
+        "openenv-core>=0.2.3",
         "fastapi>=0.110.0",
         "uvicorn[standard]>=0.29.0",
         "pydantic>=2.6.0",

@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 COPY . /app/
 
 # Install the env package itself
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir -e .
 
 # Health check — HF Spaces pings /health
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
