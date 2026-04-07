@@ -20,6 +20,10 @@ import traceback
 from typing import List, Optional
 
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load .env file if present (safe to call even if .env doesn't exist)
+load_dotenv()
 
 # ── Environment variables ─────────────────────────────────────────────────────
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
@@ -30,6 +34,8 @@ BENCHMARK: str = "clinical_triage_env"
 MAX_STEPS: int = 5
 TEMPERATURE: float = 0.3
 MAX_TOKENS: int = 400
+# Timeout in seconds — HF Spaces can cold-start slowly; 120s is safe
+CLIENT_TIMEOUT: float = float(os.getenv("CLIENT_TIMEOUT", "120"))
 
 if HF_TOKEN is None:
     raise ValueError("HF_TOKEN environment variable is required.")
@@ -123,7 +129,12 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 
 
 def run_task(task_name: str) -> None:
-    """Run one full episode for a task using the local environment server."""
+    """Run one full episode for a task using the remote/local environment server.
+
+    NOTE: The HF Space server is a singleton — it holds one shared episode state.
+    Each call to reset() starts a fresh episode (task_name is passed in the payload).
+    Running multiple tasks sequentially is safe because reset() is called before each loop.
+    """
     from clinical_triage_env.client import ClinicalTriageEnvClient
     from clinical_triage_env.models import TriageAction
 
@@ -131,9 +142,11 @@ def run_task(task_name: str) -> None:
     rewards: List[float] = []
     step = 0
     success = False
+    avg_score = 0.0
 
     try:
-        with ClinicalTriageEnvClient(base_url=ENV_BASE_URL) as env:
+        # Use CLIENT_TIMEOUT (default 120s) to survive HF Space cold starts
+        with ClinicalTriageEnvClient(base_url=ENV_BASE_URL, timeout=CLIENT_TIMEOUT) as env:
             step_result = env.reset(task_name=task_name)
             obs = step_result.observation
             done = obs.done
@@ -164,15 +177,18 @@ def run_task(task_name: str) -> None:
 
                 log_step(step, action.triage_level, reward, done, error_msg)
 
-            final_score = obs.cumulative_reward / max(step, 1)
-            success = final_score >= 0.5
+            # Use cumulative_reward from server (authoritative); divide by steps for avg score
+            # This is the single source of truth for both success and log_end
+            avg_score = obs.cumulative_reward / max(step, 1)
+            success = avg_score >= 0.5
 
     except Exception as exc:
         error_str = str(exc)[:200]
         log_step(step + 1, "none", 0.0, True, error_str)
         traceback.print_exc(file=sys.stderr)
 
-    log_end(success, step, sum(rewards) / max(len(rewards), 1), rewards)
+    # log_end uses the same avg_score as the success flag for consistency
+    log_end(success, step, avg_score, rewards)
 
 
 if __name__ == "__main__":
