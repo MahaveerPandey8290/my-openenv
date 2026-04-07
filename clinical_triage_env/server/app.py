@@ -23,6 +23,24 @@ app: FastAPI = create_fastapi_app(
 )
 
 
+@app.get("/")
+def root():
+    """Root endpoint — confirms the server is alive."""
+    return {
+        "name": "ClinicalTriageEnv",
+        "version": "0.1.0",
+        "status": "running",
+        "description": "OpenEnv RL environment for clinical triage",
+        "endpoints": {
+            "health": "GET /health",
+            "reset": "POST /reset",
+            "step": "POST /step",
+            "tasks": "GET /tasks",
+            "docs": "GET /docs",
+        },
+    }
+
+
 @app.get("/tasks")
 def list_tasks():
     """List all available tasks and their metadata."""
