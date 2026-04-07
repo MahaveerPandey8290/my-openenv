@@ -18,4 +18,4 @@ dependencies = [
 ]
 
 [project.scripts]
-server = "server.app:main"
+server = "clinical_triage_env.server.app:main"

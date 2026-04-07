@@ -16,7 +16,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "server=server.app:main",
+            "server=clinical_triage_env.server.app:main",
         ],
     },
 )
