@@ -8,7 +8,7 @@ from typing import Optional
 
 from openenv.core.env_server import Environment
 
-from models import PatientObservation, TriageAction, TriageState
+from ..models import PatientObservation, TriageAction, TriageState
 from .patient_generator import generate_patient
 from .tasks import TASK_REGISTRY
 

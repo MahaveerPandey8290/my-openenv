@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python dependencies first (layer cache)
-COPY server/requirements.txt /tmp/requirements.txt
+COPY clinical_triage_env/server/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy full project
@@ -28,7 +28,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 EXPOSE 7860
 
 # Run the FastAPI server
-CMD ["uvicorn", "server.app:app", \
+CMD ["uvicorn", "clinical_triage_env.server.app:app", \
      "--host", "0.0.0.0", \
      "--port", "7860", \
      "--workers", "1"]

@@ -7,7 +7,7 @@ import os
 from fastapi import FastAPI
 from openenv.core.env_server import create_fastapi_app, Environment as BaseEnv
 
-from models import TriageAction, PatientObservation
+from ..models import TriageAction, PatientObservation
 from .environment import ClinicalTriageEnv
 
 TASK_NAME = os.getenv("CLINICAL_TRIAGE_TASK", "vital_signs_triage")

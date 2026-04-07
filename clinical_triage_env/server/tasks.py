@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
-from models import TriageAction
+from ..models import TriageAction
 
 
 TRIAGE_ORDER = ["non_urgent", "less_urgent", "urgent", "immediate"]
