@@ -2,7 +2,7 @@
 title: Clinical Triage Env
 emoji: 🏥
 colorFrom: red
-colorTo: white
+colorTo: gray
 sdk: docker
 pinned: true
 tags:
