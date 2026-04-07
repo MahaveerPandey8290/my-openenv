@@ -1,0 +1,82 @@
+name: clinical_triage_env
+version: "0.1.0"
+description: >
+  A clinical decision-support RL environment where AI agents perform
+  emergency triage on synthetic patients. Agents must assess vital signs,
+  identify conditions, recommend tests, and classify urgency across three
+  tasks of increasing difficulty. Unique domain not previously in OpenEnv.
+author: your-hf-username
+tags:
+  - openenv
+  - healthcare
+  - triage
+  - decision-making
+  - medical-ai
+  - real-world
+
+tasks:
+  - name: vital_signs_triage
+    difficulty: easy
+    description: >
+      Given a patient's vitals and chief complaint, classify the correct
+      triage urgency level (immediate/urgent/less_urgent/non_urgent).
+      3 steps maximum. Tests recommended but not required.
+
+  - name: differential_diagnosis
+    difficulty: medium
+    description: >
+      Identify the most likely clinical condition and recommend appropriate
+      diagnostic tests from a multi-symptom patient. History is revealed
+      incrementally over up to 5 steps.
+
+  - name: polytrauma_cascade
+    difficulty: hard
+    description: >
+      Multi-system trauma or complex medical emergency. Critical findings
+      cascade across 5 steps. Agent must continuously update its triage
+      level and diagnosis. Designed to challenge frontier LLMs.
+
+action_space:
+  type: TriageAction
+  fields:
+    triage_level: "Literal['immediate','urgent','less_urgent','non_urgent']"
+    suspected_condition: "str"
+    recommended_tests: "List[str]"
+    reasoning: "str"
+
+observation_space:
+  type: PatientObservation
+  fields:
+    patient_id: "str"
+    chief_complaint: "str"
+    vitals: "Dict[str,str]"
+    visible_symptoms: "List[str]"
+    history_revealed: "List[str]"
+    step_number: "int"
+    reward: "float [0.0, 1.0]"
+    done: "bool"
+    feedback: "str"
+    cumulative_reward: "float"
+
+reward:
+  range: "[0.0, 1.0]"
+  shaped: true
+  components:
+    - "Triage level accuracy (0.4–0.6)"
+    - "Condition category match (0.2)"
+    - "Relevant tests ordered (0.2–0.25)"
+    - "Early correct answer bonus (0.1)"
+    - "Reasoning quality (0.05–0.1)"
+    - "Under-triage penalty (-0.25 to -0.4)"
+
+endpoints:
+  reset: "POST /reset"
+  step: "POST /step"
+  state: "GET /state"
+  health: "GET /health"
+  tasks: "GET /tasks"
+
+server:
+  port: 7860
+  framework: fastapi
+  runtime: uvicorn
