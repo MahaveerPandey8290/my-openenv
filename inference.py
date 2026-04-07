@@ -49,6 +49,8 @@ SYSTEM_PROMPT = """You are a clinical triage AI assistant operating in an emerge
 
 You will receive patient information incrementally. Your job is to assess the patient and respond with a JSON object ONLY — no preamble, no markdown, no explanation outside the JSON.
 
+**CRITICAL: If "PREVIOUS FEEDBACK" is provided in the prompt, it means your previous assessment had errors. Use that feedback (especially the Ground Truth) to correct your assessment for the current step.**
+
 Required JSON format:
 {
   "triage_level": "immediate" | "urgent" | "less_urgent" | "non_urgent",
@@ -149,7 +151,7 @@ def run_task(task_name: str) -> None:
         with ClinicalTriageEnvClient(base_url=ENV_BASE_URL, timeout=CLIENT_TIMEOUT) as env:
             step_result = env.reset(task_name=task_name)
             obs = step_result.observation
-            done = obs.done
+            done = step_result.done  # top-level done from ResetResponse
 
             while not done and step < MAX_STEPS:
                 prompt = build_user_prompt(obs)
@@ -171,15 +173,15 @@ def run_task(task_name: str) -> None:
                 step_result = env.step(action)
                 obs = step_result.observation
                 step += 1
-                reward = obs.reward
-                done = obs.done
+                reward = step_result.reward   # top-level reward from StepResponse
+                done = step_result.done       # top-level done from StepResponse
                 rewards.append(reward)
 
                 log_step(step, action.triage_level, reward, done, error_msg)
 
-            # Use cumulative_reward from server (authoritative); divide by steps for avg score
-            # This is the single source of truth for both success and log_end
-            avg_score = obs.cumulative_reward / max(step, 1)
+            # Use locally tracked rewards (now correctly from top-level StepResponse)
+            # as the authoritative source for scoring
+            avg_score = sum(rewards) / max(len(rewards), 1)
             success = avg_score >= 0.5
 
     except Exception as exc:

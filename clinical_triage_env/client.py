@@ -18,6 +18,11 @@ from .models import TriageAction, PatientObservation, TriageState
 class StepResult:
     observation: PatientObservation
     raw: dict
+    # Top-level reward and done from the OpenEnv StepResponse/ResetResponse.
+    # These are authoritative — PatientObservation.reward/done may be 0.0/False
+    # because the server embeds them at the response root, not inside `observation`.
+    reward: float = 0.0
+    done: bool = False
 
 
 class ClinicalTriageEnvClient:
@@ -62,7 +67,13 @@ class ClinicalTriageEnvClient:
         resp.raise_for_status()
         data = resp.json()
         obs = PatientObservation(**data.get("observation", data))
-        return StepResult(observation=obs, raw=data)
+        # reward/done live at the top level of ResetResponse, not inside observation
+        return StepResult(
+            observation=obs,
+            raw=data,
+            reward=float(data.get("reward") or 0.0),
+            done=bool(data.get("done", False)),
+        )
 
     def step(self, action: TriageAction) -> StepResult:
         """POST /step with a TriageAction wrapped in StepRequest format.
@@ -75,7 +86,13 @@ class ClinicalTriageEnvClient:
         resp.raise_for_status()
         data = resp.json()
         obs = PatientObservation(**data.get("observation", data))
-        return StepResult(observation=obs, raw=data)
+        # reward/done live at the top level of StepResponse, not inside observation
+        return StepResult(
+            observation=obs,
+            raw=data,
+            reward=float(data.get("reward") or 0.0),
+            done=bool(data.get("done", False)),
+        )
 
     def health(self) -> dict:
         resp = self._client.get("/health")
