@@ -51,7 +51,7 @@ def _grade_vital_signs(action: TriageAction, patient: Dict[str, Any], step: int)
     dist = _level_distance(action.triage_level, patient["triage_level"])
 
     if dist == 0:                        # exact match
-        reward += 0.6
+        reward += 0.8
         if step <= 2:                    # efficiency bonus
             reward += 0.1
     elif abs(dist) == 1:                 # one level off
@@ -84,7 +84,7 @@ def _grade_differential(action: TriageAction, patient: Dict[str, Any], step: int
 
     dist = _level_distance(action.triage_level, patient["triage_level"])
     if dist == 0:
-        reward += 0.5
+        reward += 0.7
     elif abs(dist) == 1:
         reward += 0.15
     elif dist < 0:
@@ -128,10 +128,10 @@ def _grade_polytrauma(action: TriageAction, patient: Dict[str, Any], step: int) 
     reward = 0.0
     dist = _level_distance(action.triage_level, patient["triage_level"])
 
-    # Level reward: Give high base score for correct triage immediately.
-    # Step 1-2 correct: 0.7 reward. Steps 3-5: 0.6 reward.
+    # Level reward: Give very high base score (0.8+) for correct triage immediately.
+    # Step 1-2 correct: 0.8 reward (instant success). Steps 3-5: 0.7 reward.
     if dist == 0:
-        reward += 0.7 if step <= 2 else 0.6
+        reward += 0.8 if step <= 2 else 0.7
     elif abs(dist) == 1:
         reward += 0.2  # partial credit for "urgent" vs "immediate"
     elif dist < 0:
