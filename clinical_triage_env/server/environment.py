@@ -54,6 +54,8 @@ class ClinicalTriageEnv(Environment):
             ground_truth_condition=self._patient["condition"],
             condition_category=self._patient["condition_category"],
             relevant_tests=self._patient["relevant_tests"],
+            step_count=0,
+            cumulative_reward=0.5,
             max_steps=self._task_spec.max_steps,
         )
 
@@ -64,10 +66,10 @@ class ClinicalTriageEnv(Environment):
             visible_symptoms=self._patient["initial_symptoms"],
             history_revealed=[],
             step_number=0,
-            reward=0.0,
+            reward=0.5,
             done=False,
             feedback="New patient arrived. Assess and triage.",
-            cumulative_reward=0.0,
+            cumulative_reward=0.5,
         )
 
     def step(self, action: TriageAction) -> PatientObservation:
@@ -79,6 +81,7 @@ class ClinicalTriageEnv(Environment):
 
         self._state.steps_taken += 1
         step_n = self._state.steps_taken
+        self._state.step_count = step_n
 
         # Reveal incremental symptoms and history
         extra = self._patient.get("extra_symptoms", [])
