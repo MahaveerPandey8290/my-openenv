@@ -128,7 +128,16 @@ class ClinicalTriageEnv(Environment):
 
     @property
     def state(self) -> TriageState:
-        """Return current internal state (ground truth + progress)."""
+        """Return current internal state (ground truth + progress).
+        Returns a default empty state if reset() has not been called yet.
+        """
         if self._state is None:
-            raise RuntimeError("Call reset() first.")
+            return TriageState(
+                episode_id="",
+                task_name=self.task_name,
+                ground_truth_level="",
+                ground_truth_condition="",
+                condition_category="",
+                relevant_tests=[],
+            )
         return self._state
