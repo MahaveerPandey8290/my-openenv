@@ -73,7 +73,7 @@ Shaped reward (0.0–1.0) at every step:
 
 ```bash
 pip install openenv-core
-git clone https://huggingface.co/spaces/YOUR_HF_USERNAME/clinical-triage-env
+git clone https://huggingface.co/spaces/Mahaveer8290/clinical-triage-env
 cd clinical-triage-env
 pip install -e .
 uvicorn clinical_triage_env.server.app:app --host 0.0.0.0 --port 7860
@@ -90,9 +90,9 @@ docker run -p 7860:7860 clinical-triage-env
 
 | Task | Baseline Model | Avg Score |
 |------|---------------|-----------|
-| vital_signs_triage | Qwen2.5-72B | 0.72 |
-| differential_diagnosis | Qwen2.5-72B | 0.55 |
-| polytrauma_cascade | Qwen2.5-72B | 0.38 |
+| vital_signs_triage | Qwen2.5-72B | 0.65 |
+| differential_diagnosis | Qwen2.5-72B | 0.68 |
+| polytrauma_cascade | Qwen2.5-72B | 1.00 |
 
 ## Environment Variables
 
@@ -100,5 +100,6 @@ docker run -p 7860:7860 clinical-triage-env
 |----------|---------|----------|
 | `API_BASE_URL` | `https://router.huggingface.co/v1` | No |
 | `MODEL_NAME` | `Qwen/Qwen2.5-72B-Instruct` | No |
-| `HF_TOKEN` | — | Yes |
+| `HF_TOKEN` | — | **Yes** |
 | `CLINICAL_TRIAGE_BASE_URL` | `http://localhost:7860` | No |
+| `CLIENT_TIMEOUT` | `120` | No |

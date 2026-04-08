@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+clinical_triage_env.egg-info/
+.ipynb_checkpoints/
+out.log
+test_results.log

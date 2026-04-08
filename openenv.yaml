@@ -1,11 +1,11 @@
 name: clinical_triage_env
-version: "0.1.0"
+version: "0.1.5"
 description: >
   A clinical decision-support RL environment where AI agents perform
   emergency triage on synthetic patients. Agents must assess vital signs,
   identify conditions, recommend tests, and classify urgency across three
   tasks of increasing difficulty. Unique domain not previously in OpenEnv.
-author: your-hf-username
+author: Mahaveer8290
 tags:
   - openenv
   - healthcare
