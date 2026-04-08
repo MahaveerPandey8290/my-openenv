@@ -28,7 +28,7 @@ def root():
     """Root endpoint — confirms the server is alive."""
     return {
         "name": "ClinicalTriageEnv",
-        "version": "0.1.0",
+        "version": "0.1.5",
         "status": "running",
         "description": "OpenEnv RL environment for clinical triage",
         "endpoints": {
