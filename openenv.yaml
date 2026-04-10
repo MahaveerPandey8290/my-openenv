@@ -5,7 +5,7 @@ description: >
   Agents order diagnostic tests and receive real results before submitting
   triage decisions. Procedurally generates thousands of unique patients.
   Connects to TRL GRPOTrainer via rollout_func for actual weight updates.
-author: your-hf-username
+author: Mahaveer8290
 tags:
   - openenv
   - healthcare
