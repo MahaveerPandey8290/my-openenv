@@ -142,6 +142,9 @@ class ClinicalTriageEnv3D(Environment):
             InterventionAction, SubmitTriageAction
         ]
     ) -> VisualObservation:
+        """
+        Execute an action in the 3D environment.
+        """
         if self._state is None:
             raise RuntimeError("Call reset() first.")
 

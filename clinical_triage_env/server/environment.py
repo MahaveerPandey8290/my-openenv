@@ -103,6 +103,9 @@ class ClinicalTriageEnv(Environment):
     def step(
         self, action: Union[OrderTestAction, SubmitTriageAction]
     ) -> PatientObservation:
+        """
+        Execute an action. Supports OrderTestAction and SubmitTriageAction.
+        """
         if self._state is None or self._patient is None:
             raise RuntimeError("Call reset() before step().")
 

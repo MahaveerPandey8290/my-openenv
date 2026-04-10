@@ -44,7 +44,7 @@ class SubmitTriageAction(Action):
     reasoning: str = Field(..., min_length=10, max_length=1000)
 
 
-# Union used by the step endpoint
+# Union used by the server
 ClinicalAction = Union[OrderTestAction, SubmitTriageAction]
 
 
