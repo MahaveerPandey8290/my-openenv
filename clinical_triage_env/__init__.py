@@ -1,8 +1,9 @@
-from .models import TriageAction, PatientObservation, TriageState
+from .models import OrderTestAction, SubmitTriageAction, PatientObservation, TriageState
 
-__all__ = ["TriageAction", "PatientObservation", "TriageState"]
+__all__ = ["OrderTestAction", "SubmitTriageAction", "PatientObservation", "TriageState"]
 
-# ClinicalTriageEnvClient is available via:
-#   from clinical_triage_env.client import ClinicalTriageEnvClient
-# It is not imported here to avoid a hard dependency on openenv.core
-# at server startup time.
+
+def get_client():
+    """Lazy import to avoid triggering openenv import chain at server startup."""
+    from .client import ClinicalTriageEnvClient
+    return ClinicalTriageEnvClient

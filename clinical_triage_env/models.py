@@ -1,76 +1,88 @@
 """
-Pydantic typed models for ClinicalTriageEnv.
-Action, Observation, State — all OpenEnv spec compliant.
+Typed Pydantic models for ClinicalTriageEnv v3.
+Two action types: OrderTestAction (tool use) and SubmitTriageAction (final).
 """
 from __future__ import annotations
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Union
 from pydantic import Field
 from openenv.core.env_server.types import Action, Observation, State
 
 
-class TriageAction(Action):
+# ── Actions ───────────────────────────────────────────────────────────────────
+
+class OrderTestAction(Action):
     """
-    Agent action: submit a triage assessment for the current patient.
-    The agent must decide urgency level, suspected condition, tests, and reasoning.
+    Tool-use action: agent orders one diagnostic test.
+    Environment returns realistic result in next observation.
+    Reward: +0.15 if relevant, -0.05 if irrelevant.
     """
+    action_type: Literal["order_test"] = "order_test"
+    test_name: str = Field(
+        ..., min_length=2, max_length=100,
+        description="Test to order. E.g. ECG, troponin, CT head, FBC, D-dimer, ABG."
+    )
+    reasoning: str = Field(
+        ..., min_length=5, max_length=500,
+        description="Clinical reasoning for ordering this test."
+    )
+
+
+class SubmitTriageAction(Action):
+    """
+    Final action: agent submits triage level and diagnosis.
+    This ends the episode and triggers full grading.
+    """
+    action_type: Literal["submit_triage"] = "submit_triage"
     triage_level: Literal["immediate", "urgent", "less_urgent", "non_urgent"] = Field(
         ...,
         description=(
-            "Triage urgency level. "
-            "'immediate'=life-threatening now, "
-            "'urgent'=serious but stable, "
-            "'less_urgent'=needs care soon, "
-            "'non_urgent'=can wait."
+            "immediate=life-threatening now | urgent=serious, assess in 15min | "
+            "less_urgent=can wait 1hr | non_urgent=minor"
         )
     )
-    suspected_condition: str = Field(
-        ...,
-        min_length=2,
-        max_length=200,
-        description="Primary diagnosis or condition the agent suspects."
-    )
-    recommended_tests: List[str] = Field(
-        default_factory=list,
-        description="List of diagnostic tests the agent recommends (e.g. ['ECG', 'troponin'])."
-    )
-    reasoning: str = Field(
-        ...,
-        min_length=5,
-        max_length=1000,
-        description="Agent's chain-of-thought justifying its assessment."
-    )
+    suspected_condition: str = Field(..., min_length=2, max_length=200)
+    reasoning: str = Field(..., min_length=10, max_length=1000)
 
+
+# Union used by the step endpoint
+ClinicalAction = Union[OrderTestAction, SubmitTriageAction]
+
+
+# ── Observations ──────────────────────────────────────────────────────────────
 
 class PatientObservation(Observation):
     """
-    Partial patient info revealed to the agent each step.
-    Info is revealed incrementally — more history appears as steps advance.
+    What the agent sees each step.
+    test_results grows as agent orders tests.
+    history_revealed grows each step.
     """
-    patient_id: str = Field(..., description="Unique episode/patient ID.")
-    chief_complaint: str = Field(..., description="Patient's primary complaint in their own words.")
-    vitals: Dict[str, str] = Field(
-        ...,
-        description="Current vital signs: HR, BP, SpO2, Temp, RR."
+    patient_id: str
+    chief_complaint: str
+    vitals: Dict[str, str]
+    visible_symptoms: List[str]
+    history_revealed: List[str] = Field(default_factory=list)
+    test_results: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Results of tests ordered so far."
     )
-    visible_symptoms: List[str] = Field(
-        ...,
-        description="Observable symptoms available at this step."
+    tests_remaining: int = Field(default=3)
+    step_number: int = 0
+    reward: float = 0.5
+    done: bool = False
+    feedback: str = ""
+    cumulative_reward: float = 0.5
+    available_actions: List[str] = Field(
+        default_factory=lambda: ["order_test", "submit_triage"]
     )
-    history_revealed: List[str] = Field(
-        default_factory=list,
-        description="Medical history items revealed so far (grows each step)."
-    )
-    step_number: int = Field(default=0, description="Current step in this episode.")
-    reward: float = Field(default=0.0, description="Reward earned at this step.")
-    done: bool = Field(default=False, description="True when the episode is finished.")
-    feedback: str = Field(default="", description="Textual feedback from the grader.")
-    cumulative_reward: float = Field(default=0.0, description="Total reward so far.")
+    task_name: str = "vital_signs_triage"
 
+
+# ── State ─────────────────────────────────────────────────────────────────────
 
 class TriageState(State):
     """
-    Internal environment state — NOT sent to agent directly.
-    Tracks ground truth and episode progress.
+    Full internal state — ground truth + progress tracking.
+    Returned by GET /state.
     """
     episode_id: str
     task_name: str
@@ -78,7 +90,12 @@ class TriageState(State):
     ground_truth_condition: str
     condition_category: str
     relevant_tests: List[str]
+    all_test_results: Dict[str, str] = Field(default_factory=dict)
+    tests_ordered: List[str] = Field(default_factory=list)
     steps_taken: int = 0
-    cumulative_reward: float = 0.0
-    max_steps: int = 5
+    tests_used: int = 0
+    max_tests: int = 3
+    max_steps: int = 8
+    cumulative_reward: float = 0.5
     solved: bool = False
+    seed: Optional[int] = None

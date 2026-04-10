@@ -1,82 +1,68 @@
 name: clinical_triage_env
-version: "0.1.5"
+version: "3.0.0"
 description: >
-  A clinical decision-support RL environment where AI agents perform
-  emergency triage on synthetic patients. Agents must assess vital signs,
-  identify conditions, recommend tests, and classify urgency across three
-  tasks of increasing difficulty. Unique domain not previously in OpenEnv.
-author: Mahaveer8290
+  True RL environment for clinical triage with tool use and GRPO training.
+  Agents order diagnostic tests and receive real results before submitting
+  triage decisions. Procedurally generates thousands of unique patients.
+  Connects to TRL GRPOTrainer via rollout_func for actual weight updates.
+author: your-hf-username
 tags:
   - openenv
   - healthcare
   - triage
-  - decision-making
-  - medical-ai
-  - real-world
+  - tool-use
+  - grpo
+  - real-rl
 
 tasks:
   - name: vital_signs_triage
     difficulty: easy
-    description: >
-      Given a patient's vitals and chief complaint, classify the correct
-      triage urgency level (immediate/urgent/less_urgent/non_urgent).
-      3 steps maximum. Tests recommended but not required.
-
+    description: Classify urgency from vitals. 1 test allowed.
   - name: differential_diagnosis
     difficulty: medium
-    description: >
-      Identify the most likely clinical condition and recommend appropriate
-      diagnostic tests from a multi-symptom patient. History is revealed
-      incrementally over up to 5 steps.
-
+    description: Identify condition + triage. 2 tests. Relevant tests earn bonus.
   - name: polytrauma_cascade
     difficulty: hard
-    description: >
-      Multi-system trauma or complex medical emergency. Critical findings
-      cascade across 5 steps. Agent must continuously update its triage
-      level and diagnosis. Designed to challenge frontier LLMs.
+    description: Multi-system emergency. 3 tests. Cascading findings.
 
 action_space:
-  type: TriageAction
-  fields:
-    triage_level: "Literal['immediate','urgent','less_urgent','non_urgent']"
-    suspected_condition: "str"
-    recommended_tests: "List[str]"
-    reasoning: "str"
+  union:
+    - type: OrderTestAction
+      fields: {action_type: "order_test", test_name: str, reasoning: str}
+    - type: SubmitTriageAction
+      fields: {action_type: "submit_triage", triage_level: str, suspected_condition: str, reasoning: str}
 
 observation_space:
   type: PatientObservation
-  fields:
-    patient_id: "str"
-    chief_complaint: "str"
-    vitals: "Dict[str,str]"
-    visible_symptoms: "List[str]"
-    history_revealed: "List[str]"
-    step_number: "int"
-    reward: "float [0.0, 1.0]"
-    done: "bool"
-    feedback: "str"
-    cumulative_reward: "float"
+  key_fields:
+    test_results: "Dict[str,str] — grows as agent orders tests"
+    tests_remaining: int
+    available_actions: List[str]
+    reward: "float strictly in (0.01, 0.99)"
 
 reward:
-  range: "[0.0, 1.0]"
+  range: "(0.01, 0.99) strictly open"
   shaped: true
+  dense: true
   components:
-    - "Triage level accuracy (0.4–0.6)"
-    - "Condition category match (0.2)"
-    - "Relevant tests ordered (0.2–0.25)"
-    - "Early correct answer bonus (0.1)"
-    - "Reasoning quality (0.05–0.1)"
-    - "Under-triage penalty (-0.25 to -0.4)"
+    - "Relevant test ordered: +0.15 on base 0.5"
+    - "Irrelevant test: -0.05 on base 0.5"
+    - "Correct triage level: +0.42 to +0.55"
+    - "Condition category match: +0.18"
+    - "Tool use bonus: +0.05 to +0.15"
+    - "Early answer: +0.08"
+    - "Under-triage penalty: -0.28 to -0.38"
+    - "Reasoning quality: +0.04 to +0.08"
+
+training:
+  compatible: [TRL GRPOTrainer, SkyRL, ART, Oumi]
+  rollout_func: train_grpo.rollout_func
+  reward_func: train_grpo.clinical_reward_func
+  train_script: train_grpo.py
 
 endpoints:
-  reset: "POST /reset"
-  step: "POST /step"
+  reset: "POST /reset  — body: {task_name?, seed?}"
+  step: "POST /step   — body: {action: OrderTestAction|SubmitTriageAction}"
   state: "GET /state"
   health: "GET /health"
   tasks: "GET /tasks"
-
-server:
-  port: 7860
-  framework: fastapi
-  runtime: uvicorn

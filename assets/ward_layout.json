@@ -1,0 +1,49 @@
+{
+  "name": "emergency_department_ward",
+  "version": "1.0",
+  "dimensions": {
+    "width_metres": 12.0,
+    "depth_metres": 8.0,
+    "height_metres": 3.0
+  },
+  "locations": {
+    "bed_1": {
+      "position": [2.0, 0.0, 2.0],
+      "label": "Bed 1 — Left Near",
+      "type": "patient_bed"
+    },
+    "bed_2": {
+      "position": [2.0, 0.0, 6.0],
+      "label": "Bed 2 — Left Far",
+      "type": "patient_bed"
+    },
+    "bed_3": {
+      "position": [10.0, 0.0, 2.0],
+      "label": "Bed 3 — Right Near",
+      "type": "patient_bed"
+    },
+    "bed_4": {
+      "position": [10.0, 0.0, 6.0],
+      "label": "Bed 4 — Right Far",
+      "type": "patient_bed"
+    },
+    "nurses_station": {
+      "position": [6.0, 0.0, 4.0],
+      "label": "Nurses Station — Centre",
+      "type": "station"
+    },
+    "equipment_cart": {
+      "position": [6.0, 0.0, 1.0],
+      "label": "Equipment Cart",
+      "type": "equipment"
+    },
+    "exit": {
+      "position": [6.0, 0.0, 8.0],
+      "label": "Emergency Exit",
+      "type": "exit"
+    }
+  },
+  "agent_start": "nurses_station",
+  "examination_radius_metres": 2.5,
+  "walking_speed_ms": 1.4
+}

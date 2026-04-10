@@ -1,210 +1,291 @@
 """
-Synthetic patient data factory.
-All patients are entirely fictional and procedurally generated from templates.
-Each task has its own patient pool with known ground-truth answers.
+Procedural patient generator — produces thousands of unique patients.
+Uses seeds for reproducibility. Never memorises — always generates fresh.
+Inspired by Reasoning Gym's procedural generation approach.
 """
+from __future__ import annotations
 import random
-from typing import Any, Dict, List
-
-# ─────────────────────────────────────────────
-# TASK: vital_signs_triage  (EASY)
-# Agent sees vitals + complaint only.
-# Must classify triage level correctly.
-# ─────────────────────────────────────────────
-VITAL_SIGNS_PATIENTS: List[Dict[str, Any]] = [
-    {
-        "complaint": "I feel dizzy and my heart is racing really fast.",
-        "vitals": {"HR": "148 bpm", "BP": "88/54 mmHg", "SpO2": "96%", "Temp": "37.1°C", "RR": "18/min"},
-        "initial_symptoms": ["palpitations", "dizziness", "diaphoresis"],
-        "extra_symptoms": ["chest tightness"],
-        "history": ["no prior cardiac history", "takes no medications"],
-        "triage_level": "immediate",
-        "condition": "supraventricular tachycardia with hypotension",
-        "condition_category": "cardiac",
-        "relevant_tests": ["ECG", "troponin", "electrolytes"],
-    },
-    {
-        "complaint": "I cut my finger while cooking, it won't stop bleeding.",
-        "vitals": {"HR": "82 bpm", "BP": "118/74 mmHg", "SpO2": "99%", "Temp": "36.8°C", "RR": "14/min"},
-        "initial_symptoms": ["laceration right index finger", "minor bleeding"],
-        "extra_symptoms": ["wound approximately 2cm"],
-        "history": ["no blood thinners", "tetanus up to date"],
-        "triage_level": "non_urgent",
-        "condition": "minor laceration",
-        "condition_category": "trauma",
-        "relevant_tests": ["wound assessment"],
-    },
-    {
-        "complaint": "Severe headache started suddenly an hour ago, worst of my life.",
-        "vitals": {"HR": "90 bpm", "BP": "178/102 mmHg", "SpO2": "98%", "Temp": "37.0°C", "RR": "16/min"},
-        "initial_symptoms": ["thunderclap headache", "neck stiffness", "photophobia"],
-        "extra_symptoms": ["nausea", "vomiting"],
-        "history": ["no prior headache history", "non-smoker"],
-        "triage_level": "immediate",
-        "condition": "subarachnoid haemorrhage",
-        "condition_category": "neurological",
-        "relevant_tests": ["CT head", "lumbar puncture", "blood pressure monitoring"],
-    },
-    {
-        "complaint": "My ankle hurts after I twisted it playing football.",
-        "vitals": {"HR": "76 bpm", "BP": "122/78 mmHg", "SpO2": "99%", "Temp": "36.9°C", "RR": "15/min"},
-        "initial_symptoms": ["right ankle swelling", "tenderness on palpation", "able to weight-bear"],
-        "extra_symptoms": ["bruising lateral malleolus"],
-        "history": ["no prior injuries", "fit and healthy 22-year-old"],
-        "triage_level": "less_urgent",
-        "condition": "lateral ankle sprain",
-        "condition_category": "musculoskeletal",
-        "relevant_tests": ["Ottawa ankle rules assessment", "X-ray if indicated"],
-    },
-    {
-        "complaint": "Chest pain for 20 minutes, spreading to my left arm.",
-        "vitals": {"HR": "102 bpm", "BP": "142/88 mmHg", "SpO2": "95%", "Temp": "37.2°C", "RR": "20/min"},
-        "initial_symptoms": ["crushing chest pain", "left arm radiation", "diaphoresis"],
-        "extra_symptoms": ["nausea", "shortness of breath"],
-        "history": ["hypertension", "smoker", "family history of MI"],
-        "triage_level": "immediate",
-        "condition": "acute myocardial infarction",
-        "condition_category": "cardiac",
-        "relevant_tests": ["ECG", "troponin", "aspirin", "chest X-ray"],
-    },
-    {
-        "complaint": "I have a sore throat and mild fever for two days.",
-        "vitals": {"HR": "88 bpm", "BP": "116/72 mmHg", "SpO2": "98%", "Temp": "38.1°C", "RR": "15/min"},
-        "initial_symptoms": ["pharyngitis", "low-grade fever", "mild odynophagia"],
-        "extra_symptoms": ["no stridor", "no drooling"],
-        "history": ["no immunocompromise", "no penicillin allergy"],
-        "triage_level": "non_urgent",
-        "condition": "viral pharyngitis",
-        "condition_category": "infectious",
-        "relevant_tests": ["throat swab", "FBC if persists"],
-    },
-]
-
-# ─────────────────────────────────────────────
-# TASK: differential_diagnosis  (MEDIUM)
-# Agent sees vitals + symptoms + partial history.
-# Must identify condition AND recommend 2+ relevant tests.
-# ─────────────────────────────────────────────
-DIFFERENTIAL_PATIENTS: List[Dict[str, Any]] = [
-    {
-        "complaint": "Sharp right lower abdominal pain, started 6 hours ago, getting worse.",
-        "vitals": {"HR": "96 bpm", "BP": "124/80 mmHg", "SpO2": "98%", "Temp": "38.3°C", "RR": "18/min"},
-        "initial_symptoms": ["RLQ pain", "rebound tenderness", "guarding", "anorexia"],
-        "extra_symptoms": ["Rovsing's sign positive", "psoas sign positive"],
-        "history": ["no prior abdominal surgery", "last bowel movement yesterday", "male 24yo"],
-        "triage_level": "urgent",
-        "condition": "acute appendicitis",
-        "condition_category": "appendic",
-        "relevant_tests": ["FBC", "CRP", "ultrasound abdomen", "CT abdomen"],
-    },
-    {
-        "complaint": "Sudden onset shortness of breath, right sided chest pain, recent long-haul flight.",
-        "vitals": {"HR": "118 bpm", "BP": "104/66 mmHg", "SpO2": "91%", "Temp": "37.4°C", "RR": "26/min"},
-        "initial_symptoms": ["dyspnoea", "pleuritic chest pain", "tachycardia", "tachypnoea"],
-        "extra_symptoms": ["right calf swelling", "leg tenderness"],
-        "history": ["14-hour flight 3 days ago", "on oral contraceptive pill", "no prior VTE"],
-        "triage_level": "immediate",
-        "condition": "pulmonary embolism",
-        "condition_category": "pulmonary embol",
-        "relevant_tests": ["D-dimer", "CT pulmonary angiogram", "ABG", "ECG", "leg Doppler"],
-    },
-    {
-        "complaint": "Cannot pass urine, severe lower abdominal pain.",
-        "vitals": {"HR": "94 bpm", "BP": "148/92 mmHg", "SpO2": "97%", "Temp": "37.0°C", "RR": "17/min"},
-        "initial_symptoms": ["urinary retention", "suprapubic pain", "distended bladder on palpation"],
-        "extra_symptoms": ["nocturia x3 prior weeks", "weak stream lately"],
-        "history": ["male 67yo", "known BPH", "started new antihistamine recently"],
-        "triage_level": "urgent",
-        "condition": "acute urinary retention secondary to BPH",
-        "condition_category": "urin",
-        "relevant_tests": ["bladder scan", "urinalysis", "PSA", "renal function", "catheterisation"],
-    },
-    {
-        "complaint": "Confusion and high fever in my elderly father.",
-        "vitals": {"HR": "106 bpm", "BP": "98/60 mmHg", "SpO2": "94%", "Temp": "39.6°C", "RR": "24/min"},
-        "initial_symptoms": ["acute confusion", "fever", "hypotension", "tachycardia", "tachypnoea"],
-        "extra_symptoms": ["not producing much urine", "cool peripheries"],
-        "history": ["78yo male", "type 2 diabetes", "indwelling urinary catheter", "UTI 2 months ago"],
-        "triage_level": "immediate",
-        "condition": "urosepsis with septic shock",
-        "condition_category": "sepsis",
-        "relevant_tests": ["blood cultures", "urine culture", "FBC", "lactate", "IV antibiotics", "fluid resuscitation"],
-    },
-]
-
-# ─────────────────────────────────────────────
-# TASK: polytrauma_cascade  (HARD)
-# Symptoms are revealed across 5 steps.
-# Agent must update triage level and diagnosis as new info arrives.
-# Correct answer only achievable by integrating ALL steps.
-# ─────────────────────────────────────────────
-POLYTRAUMA_PATIENTS: List[Dict[str, Any]] = [
-    {
-        "complaint": "RTA — motorcyclist vs car, brought in by ambulance.",
-        "vitals": {"HR": "124 bpm", "BP": "96/58 mmHg", "SpO2": "93%", "Temp": "36.5°C", "RR": "28/min"},
-        "initial_symptoms": ["mechanism: high-speed RTA", "GCS 12", "visible right femur deformity"],
-        "extra_symptoms": [
-            "step 2: decreased air entry left base, trachea deviated right",
-            "step 3: distended neck veins, muffled heart sounds",
-            "step 4: abdomen rigid, pelvis unstable on spring test",
-            "step 5: GCS now 8, pupils unequal",
-        ],
-        "history": [
-            "step 1: no helmet worn",
-            "step 2: on warfarin for AF",
-            "step 3: splenectomy 2 years ago",
-            "step 4: blood glucose 2.1 (hypoglycaemic)",
-            "step 5: wife reports prior head injury 1 year ago",
-        ],
-        "triage_level": "immediate",
-        "condition": "polytrauma: tension pneumothorax + cardiac tamponade + traumatic brain injury",
-        "condition_category": "trauma",
-        "relevant_tests": [
-            "FAST ultrasound", "chest X-ray", "CT trauma series",
-            "massive transfusion protocol", "needle decompression", "pericardiocentesis"
-        ],
-    },
-    {
-        "complaint": "Found collapsed at home by neighbour, unknown downtime.",
-        "vitals": {"HR": "42 bpm", "BP": "80/40 mmHg", "SpO2": "88%", "Temp": "34.1°C", "RR": "8/min"},
-        "initial_symptoms": ["GCS 6", "bradycardia", "hypothermia", "hypoxia"],
-        "extra_symptoms": [
-            "step 2: pupils 2mm bilateral, rigidity",
-            "step 3: empty bottle of metoprolol found",
-            "step 4: glucose 1.8, potassium 6.8 on bloods",
-            "step 5: ECG shows complete heart block",
-        ],
-        "history": [
-            "step 1: elderly female, lives alone",
-            "step 2: known hypothyroidism, non-compliant",
-            "step 3: recent GP visit for depression",
-            "step 4: no known drug allergies",
-            "step 5: previous intentional overdose 2 years ago",
-        ],
-        "triage_level": "immediate",
-        "condition": "beta-blocker overdose with complete heart block and myxoedema features",
-        "condition_category": "toxicolog",
-        "relevant_tests": [
-            "glucagon IV", "calcium chloride", "high-dose insulin therapy",
-            "atropine", "transcutaneous pacing", "thyroid function tests", "toxicology screen"
-        ],
-    },
-]
+from typing import Any, Dict, List, Optional
 
 
-TASK_PATIENT_MAP = {
-    "vital_signs_triage": VITAL_SIGNS_PATIENTS,
-    "differential_diagnosis": DIFFERENTIAL_PATIENTS,
-    "polytrauma_cascade": POLYTRAUMA_PATIENTS,
+# ── Building blocks for procedural generation ────────────────────────────────
+
+COMPLAINTS = {
+    "cardiac": [
+        "crushing chest pain radiating to my left arm for {mins} minutes",
+        "sudden chest tightness and shortness of breath since {mins} minutes ago",
+        "my heart is racing and I feel faint",
+        "sharp chest pain, worse on breathing",
+        "palpitations and dizziness started {mins} minutes ago",
+    ],
+    "neurological": [
+        "worst headache of my life, started suddenly {mins} minutes ago",
+        "sudden severe headache and my neck feels stiff",
+        "I can't see properly and my head is pounding",
+        "thunderclap headache, photophobia, feels like head is exploding",
+    ],
+    "pulmonary_embol": [
+        "sudden shortness of breath and right sided chest pain",
+        "I can't catch my breath, came on suddenly {mins} minutes ago",
+        "pleuritic chest pain and leg swelling after long flight",
+        "sudden breathlessness, SpO2 dropping",
+    ],
+    "appendic": [
+        "right lower abdominal pain getting worse over {hrs} hours",
+        "started around my belly button now moved to the right side",
+        "severe stomach pain, I can't stand up straight",
+        "sharp pain in my lower right abdomen, nausea, no appetite",
+    ],
+    "sepsis": [
+        "my elderly father is confused and has a high fever",
+        "fever, shaking, I feel really unwell, can't stay awake",
+        "high temperature and I can barely stand, very weak",
+        "rigors and confusion, temp {temp} degrees",
+    ],
+    "trauma": [
+        "motorcycle accident, I was thrown from the bike",
+        "hit by a car, I can't move my leg",
+        "fell from height onto concrete",
+        "RTA, airbag deployed, chest pain",
+    ],
+    "musculoskeletal": [
+        "twisted my ankle playing sport",
+        "fell and hurt my wrist",
+        "knee pain after a tackle during football",
+        "lower back pain after lifting at work",
+    ],
+    "infectious": [
+        "sore throat and mild fever for {days} days",
+        "cough, runny nose and temperature for a few days",
+        "ear pain and fever since yesterday",
+        "body aches, headache, feeling flu-like",
+    ],
+}
+
+VITALS_PROFILES = {
+    "immediate": {
+        "HR": lambda r: f"{r.randint(110,160)} bpm",
+        "BP": lambda r: f"{r.randint(70,95)}/{r.randint(40,60)} mmHg",
+        "SpO2": lambda r: f"{r.randint(88,94)}%",
+        "Temp": lambda r: f"{round(r.uniform(36.0,39.8),1)}°C",
+        "RR": lambda r: f"{r.randint(22,32)}/min",
+    },
+    "urgent": {
+        "HR": lambda r: f"{r.randint(95,115)} bpm",
+        "BP": lambda r: f"{r.randint(90,140)}/{r.randint(55,90)} mmHg",
+        "SpO2": lambda r: f"{r.randint(93,97)}%",
+        "Temp": lambda r: f"{round(r.uniform(36.5,39.2),1)}°C",
+        "RR": lambda r: f"{r.randint(18,24)}/min",
+    },
+    "less_urgent": {
+        "HR": lambda r: f"{r.randint(78,95)} bpm",
+        "BP": lambda r: f"{r.randint(110,145)}/{r.randint(65,88)} mmHg",
+        "SpO2": lambda r: f"{r.randint(96,99)}%",
+        "Temp": lambda r: f"{round(r.uniform(36.5,38.2),1)}°C",
+        "RR": lambda r: f"{r.randint(14,18)}/min",
+    },
+    "non_urgent": {
+        "HR": lambda r: f"{r.randint(65,85)} bpm",
+        "BP": lambda r: f"{r.randint(110,135)}/{r.randint(65,82)} mmHg",
+        "SpO2": lambda r: f"{r.randint(97,100)}%",
+        "Temp": lambda r: f"{round(r.uniform(36.4,37.5),1)}°C",
+        "RR": lambda r: f"{r.randint(12,16)}/min",
+    },
+}
+
+SYMPTOMS_POOL = {
+    "cardiac": [
+        ["crushing chest pain", "diaphoresis", "left arm radiation"],
+        ["palpitations", "syncope", "dizziness"],
+        ["chest tightness", "nausea", "shortness of breath"],
+        ["pleuritic chest pain", "tachycardia", "diaphoresis"],
+    ],
+    "neurological": [
+        ["thunderclap headache", "neck stiffness", "photophobia"],
+        ["sudden severe headache", "vomiting", "photophobia"],
+        ["headache", "neck rigidity", "altered consciousness"],
+    ],
+    "pulmonary_embol": [
+        ["sudden dyspnoea", "pleuritic chest pain", "tachycardia"],
+        ["shortness of breath", "right leg swelling", "tachypnoea"],
+        ["hypoxia", "tachycardia", "pleuritic pain"],
+    ],
+    "appendic": [
+        ["RLQ pain", "rebound tenderness", "guarding"],
+        ["periumbilical pain migrated RLQ", "anorexia", "nausea"],
+        ["RLQ tenderness", "Rovsing positive", "fever"],
+    ],
+    "sepsis": [
+        ["fever", "rigors", "confusion", "hypotension"],
+        ["high temperature", "tachycardia", "reduced consciousness"],
+        ["fever", "cool peripheries", "mottled skin"],
+    ],
+    "trauma": [
+        ["mechanism: RTA high speed", "deformity right femur", "GCS 12"],
+        ["chest wall tenderness", "reduced air entry", "tracheal deviation"],
+        ["visible deformity", "haemorrhage", "mechanism: fall from height"],
+    ],
+    "musculoskeletal": [
+        ["ankle swelling", "lateral tenderness", "able to weight-bear"],
+        ["wrist pain", "swelling", "mechanism: FOOSH"],
+        ["knee effusion", "medial tenderness", "mechanism: tackle"],
+    ],
+    "infectious": [
+        ["pharyngitis", "low-grade fever", "mild odynophagia"],
+        ["rhinorrhoea", "mild cough", "myalgia"],
+        ["otalgia", "fever", "ear discharge"],
+    ],
+}
+
+HISTORY_POOL = {
+    "cardiac": [
+        "known hypertension on amlodipine",
+        "smoker 20 pack-years",
+        "family history MI father age 52",
+        "hypercholesterolaemia on statin",
+        "previous NSTEMI 3 years ago",
+        "type 2 diabetes on metformin",
+        "no significant cardiac history",
+    ],
+    "neurological": [
+        "no prior headache history",
+        "previously well",
+        "migraines but this is different",
+        "hypertension poorly controlled",
+        "no anticoagulation",
+        "non-smoker",
+    ],
+    "pulmonary_embol": [
+        "long-haul flight 3 days ago",
+        "on oral contraceptive pill",
+        "previous DVT right leg",
+        "recent surgery 2 weeks ago",
+        "active malignancy",
+        "no prior VTE",
+        "immobilised 2 weeks post orthopaedic surgery",
+    ],
+    "appendic": [
+        "no prior abdominal surgery",
+        "last bowel movement yesterday",
+        "no blood thinners",
+        "fit and well",
+        "appendicitis in sibling",
+    ],
+    "sepsis": [
+        "indwelling urinary catheter",
+        "type 2 diabetes",
+        "recent UTI 2 months ago",
+        "immunocompromised on steroids",
+        "nursing home resident",
+        "chronic kidney disease",
+    ],
+    "trauma": [
+        "no helmet worn",
+        "on warfarin for AF",
+        "splenectomy 2 years ago",
+        "previously fit and well",
+        "alcohol intoxicated at scene",
+    ],
+    "musculoskeletal": [
+        "no prior injuries",
+        "fit and well",
+        "tetanus up to date",
+        "regular sport participation",
+    ],
+    "infectious": [
+        "no immunocompromise",
+        "no penicillin allergy",
+        "smoker",
+        "no significant PMH",
+        "asthma well-controlled",
+    ],
+}
+
+RELEVANT_TESTS = {
+    "cardiac": ["ECG", "troponin", "chest X-ray", "echocardiogram", "electrolytes"],
+    "neurological": ["CT head", "lumbar puncture", "blood pressure monitoring", "coagulation"],
+    "pulmonary_embol": ["D-dimer", "CT pulmonary angiogram", "ABG", "ECG", "leg Doppler"],
+    "appendic": ["FBC", "CRP", "ultrasound abdomen", "CT abdomen"],
+    "sepsis": ["blood cultures", "urine culture", "FBC", "lactate", "CRP"],
+    "trauma": ["FAST ultrasound", "chest X-ray", "CT trauma series", "FBC", "coagulation"],
+    "musculoskeletal": ["X-ray ankle", "X-ray wrist", "FBC"],
+    "infectious": ["throat swab", "FBC", "CRP", "monospot"],
+}
+
+TRIAGE_MAP = {
+    "cardiac": "immediate",
+    "neurological": "immediate",
+    "pulmonary_embol": "immediate",
+    "appendic": "urgent",
+    "sepsis": "immediate",
+    "trauma": "immediate",
+    "musculoskeletal": "less_urgent",
+    "infectious": "non_urgent",
 }
 
 
-def generate_patient(task_name: str) -> Dict[str, Any]:
+def generate_patient(task_name: str, seed: Optional[int] = None) -> Dict[str, Any]:
     """
-    Select a random patient for the given task.
-    Returns a dict with all patient data including ground truth.
+    Generate a unique synthetic patient using procedural randomness.
+    seed=None -> fully random (training). seed=int -> reproducible (evaluation).
     """
-    pool = TASK_PATIENT_MAP.get(task_name)
-    if not pool:
-        raise ValueError(f"Unknown task: {task_name}. Must be one of {list(TASK_PATIENT_MAP.keys())}")
-    return dict(random.choice(pool))  # shallow copy to avoid mutation
+    rng = random.Random(seed)
+
+    # Pick category based on task difficulty
+    if task_name == "vital_signs_triage":
+        categories = list(TRIAGE_MAP.keys())
+    elif task_name == "differential_diagnosis":
+        categories = ["cardiac", "pulmonary_embol", "appendic", "sepsis", "neurological"]
+    else:  # polytrauma_cascade
+        categories = ["trauma", "sepsis", "cardiac", "neurological"]
+
+    category = rng.choice(categories)
+    triage_level = TRIAGE_MAP[category]
+
+    # Build complaint from template
+    complaint_template = rng.choice(COMPLAINTS[category])
+    complaint = complaint_template.format(
+        mins=rng.randint(10, 120),
+        hrs=rng.randint(2, 24),
+        days=rng.randint(1, 5),
+        temp=round(rng.uniform(38.2, 40.1), 1),
+    )
+
+    # Build vitals
+    vitals_profile = VITALS_PROFILES[triage_level]
+    vitals = {k: v(rng) for k, v in vitals_profile.items()}
+
+    # Build symptoms — pick one cluster + shuffle
+    symptom_clusters = SYMPTOMS_POOL[category]
+    symptoms = list(rng.choice(symptom_clusters))
+    rng.shuffle(symptoms)
+
+    # Build history — pick 2-3 items
+    history_pool = HISTORY_POOL[category]
+    n_history = rng.randint(2, min(4, len(history_pool)))
+    history = rng.sample(history_pool, n_history)
+
+    # For hard task: tag history items with step reveals
+    if task_name == "polytrauma_cascade":
+        history = [f"step {i+1}: {h}" for i, h in enumerate(history)]
+
+    # Extra symptoms revealed over steps
+    extra_symptom_pool = [
+        "diaphoresis", "pallor", "peripheral shutdown",
+        "altered GCS", "tachypnoea worsening", "mottled skin",
+        "reduced urine output", "hypoxia worsening",
+    ]
+    extra_symptoms = rng.sample(extra_symptom_pool, min(3, len(extra_symptom_pool)))
+
+    return {
+        "complaint": complaint,
+        "vitals": vitals,
+        "initial_symptoms": symptoms[:2],
+        "extra_symptoms": extra_symptoms,
+        "history": history,
+        "triage_level": triage_level,
+        "condition": f"{category.replace('_', ' ')} presentation",
+        "condition_category": category,
+        "relevant_tests": RELEVANT_TESTS[category],
+        "seed": seed,
+    }

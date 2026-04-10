@@ -1,8 +1,7 @@
 from setuptools import setup, find_packages
-
 setup(
-    name="clinical_triage_env",
-    version="3.0.0",
+    name="clinical_triage_3d",
+    version="4.0.0",
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=[
@@ -11,17 +10,11 @@ setup(
         "uvicorn[standard]>=0.29.0",
         "pydantic>=2.6.0",
         "openai>=1.30.0",
-        "python-dotenv>=1.0.0",
         "httpx>=0.27.0",
         "requests>=2.31.0",
+        "pygame>=2.5.0",
+        "PyOpenGL>=3.1.7",
+        "Pillow>=10.0.0",
+        "numpy>=1.26.0",
     ],
-    extras_require={
-        "train": [
-            "torch>=2.0.0",
-            "transformers>=4.40.0",
-            "trl>=0.9.0",
-            "datasets>=2.18.0",
-            "accelerate>=0.28.0",
-        ]
-    },
 )

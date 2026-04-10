@@ -4,22 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clinical_triage_env"
-version = "0.1.5"
-description = "OpenEnv clinical triage environment"
+version = "3.0.0"
+description = "True RL environment for clinical triage with tool use and GRPO training"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "openenv-core>=0.2.3",
+  "openenv-core>=0.2.0",
   "fastapi>=0.110.0",
   "uvicorn[standard]>=0.29.0",
   "pydantic>=2.6.0",
   "openai>=1.30.0",
   "python-dotenv>=1.0.0",
   "httpx>=0.27.0",
+  "requests>=2.31.0",
 ]
 
-[project.scripts]
-server = "clinical_triage_env.server.app:main"
-
 [tool.setuptools.packages.find]
-include = ["clinical_triage_env*"]
+include = ["clinical_triage_env*", "clinical_triage_3d*"]

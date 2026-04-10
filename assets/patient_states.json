@@ -1,0 +1,50 @@
+{
+  "visual_states": {
+    "critical": {
+      "color_rgb": [255, 25, 25],
+      "monitor_alarm": true,
+      "iv_drip": true,
+      "body_posture": "recumbent_distressed",
+      "visible_cues": ["pallor", "diaphoresis", "accessory_muscle_use"],
+      "alert_label": "CRITICAL — Immediate"
+    },
+    "warning": {
+      "color_rgb": [255, 200, 0],
+      "monitor_alarm": true,
+      "iv_drip": false,
+      "body_posture": "semi_recumbent",
+      "visible_cues": ["mild_distress", "tachypnea_visible"],
+      "alert_label": "WARNING — Urgent"
+    },
+    "stable": {
+      "color_rgb": [25, 200, 50],
+      "monitor_alarm": false,
+      "iv_drip": false,
+      "body_posture": "sitting_up",
+      "visible_cues": ["alert_and_oriented", "comfortable"],
+      "alert_label": "STABLE — Non-urgent"
+    },
+    "unknown": {
+      "color_rgb": [150, 150, 150],
+      "monitor_alarm": false,
+      "iv_drip": false,
+      "body_posture": "lying_still",
+      "visible_cues": ["not_yet_assessed"],
+      "alert_label": "UNKNOWN — Assess first"
+    },
+    "deceased": {
+      "color_rgb": [50, 50, 50],
+      "monitor_alarm": false,
+      "iv_drip": false,
+      "body_posture": "motionless",
+      "visible_cues": ["no_chest_rise", "fixed_pupils"],
+      "alert_label": "DECEASED"
+    }
+  },
+  "examination_reveal_map": {
+    "visual": ["visible_signs", "body_posture", "monitor_reading"],
+    "vitals": ["hr", "bp", "spo2", "rr", "temperature"],
+    "auscultation": ["breath_sounds", "heart_sounds", "bowel_sounds"],
+    "palpation": ["abdominal_tenderness", "peripheral_pulses", "skin_turgor"]
+  }
+}

@@ -1,0 +1,58 @@
+name: clinical_triage_3d
+version: "4.0.0"
+description: >
+  3D Embodied Medical Agent RL environment. Agent navigates a rendered
+  3D emergency department, visually observes patients (base64 JPEG),
+  applies physical interventions, and submits triage decisions.
+  Unique: only medical 3D environment in OpenEnv. CARLA-style architecture.
+author: your-hf-username
+tags:
+  - openenv
+  - healthcare
+  - 3d
+  - embodied-agent
+  - visual-rl
+  - grpo
+  - multimodal
+
+tasks:
+  - name: single_patient_rescue
+    difficulty: easy
+    description: Navigate to critical patient, examine, intervene, triage.
+  - name: ward_prioritisation
+    difficulty: medium
+    description: 4 patients, mixed severity, navigate and prioritise all.
+  - name: mass_casualty_incident
+    difficulty: hard
+    description: 4 critical patients, 60s limit, speed vs accuracy tradeoff.
+
+action_space:
+  union:
+    - type: MoveToAction (move_to)
+    - type: ExaminePatientAction (examine_patient)
+    - type: OrderTestAction (order_test)
+    - type: InterventionAction (intervene)
+    - type: SubmitTriageAction (submit_triage)
+
+observation_space:
+  type: VisualObservation
+  key_fields:
+    image_base64: "base64 JPEG 84x84 — primary visual signal"
+    beds_summary: "dict — clinical state of each bed"
+    time_remaining_seconds: float
+    nearby_beds: List[str]
+
+reward:
+  range: "(0.01, 0.99) strictly open"
+  shaped: true
+  dense: true
+  components:
+    - "Navigation toward critical patient: +0.08"
+    - "Time cost per second: -0.01"
+    - "Correct examination: +0.52 to +0.58"
+    - "Relevant test ordered: +0.65"
+    - "Correct intervention: +0.72"
+    - "Final triage accuracy per patient: +0.55/n"
+    - "Time bonus (faster): up to +0.12"
+    - "Under-triage penalty: -0.35/n"
+    - "Timeout penalty: score * 0.5"

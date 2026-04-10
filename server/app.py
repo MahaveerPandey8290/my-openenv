@@ -1,10 +1,8 @@
-from clinical_triage_env.server.app import app, main as _main
+"""Root entry point — re-exports the FastAPI app from the clinical_triage_env package."""
+from clinical_triage_env.server.app import app
 
-__all__ = ["app", "main"]
-
-
-def main() -> None:
-    _main()
+__all__ = ["app"]
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)

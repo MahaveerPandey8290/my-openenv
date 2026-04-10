@@ -1,183 +1,145 @@
 """
-Task definitions and step-level graders for ClinicalTriageEnv.
+Task specs and shaped reward graders for ClinicalTriageEnv v3.
 
-Scores are strictly in the open interval (0.0, 1.0) — exclusive.
-The Meta OpenEnv validator rejects exactly 0.0 or exactly 1.0.
-All return values go through _clamp() which enforces [0.01, 0.99].
+Reward philosophy (Reasoning Gym style):
+  - Every step gives signal — no sparse rewards
+  - Ordering the RIGHT test rewards clinical reasoning
+  - Under-triage is punished harder than over-triage (real medicine)
+  - Efficiency bonus for earlier correct answers
+  - Reasoning length rewarded (encourages chain-of-thought)
+  - All scores strictly in (0.01, 0.99) — validator requirement
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List
 
-from ..models import TriageAction
-
+from ..models import SubmitTriageAction
 
 TRIAGE_ORDER = ["non_urgent", "less_urgent", "urgent", "immediate"]
 
 
-def _clamp(reward: float) -> float:
-    """
-    Clamp reward to strictly open interval (0.0, 1.0).
-    Validator requires: 0.0 < score < 1.0 (exclusive on both ends).
-    Floor = 0.01, ceiling = 0.99.
-    """
-    return round(min(max(float(reward), 0.01), 0.99), 2)
+def _clamp(r: float) -> float:
+    return round(min(max(float(r), 0.01), 0.99), 2)
 
 
-def _level_distance(pred: str, true: str) -> int:
-    """Signed distance: positive = over-triage, negative = under-triage."""
+def _level_dist(pred: str, true: str) -> int:
     try:
         return TRIAGE_ORDER.index(pred) - TRIAGE_ORDER.index(true)
     except ValueError:
         return 0
 
 
-def _test_overlap(ordered: list, correct: list) -> float:
-    ordered_lower = {t.lower() for t in ordered}
-    correct_lower = {t.lower() for t in correct}
-    if not correct_lower:
-        return 0.0
-    hits = sum(
-        any(c in o or o in c for o in ordered_lower)
-        for c in correct_lower
-    )
-    return hits / len(correct_lower)
+def _condition_hit(suspected: str, category: str) -> float:
+    return 0.18 if category.lower() in suspected.lower() else 0.0
 
 
-def _condition_match(suspected: str, category: str) -> float:
-    return 0.2 if category.lower() in suspected.lower() else 0.0
+def grade_order_test(is_relevant: bool, tests_used: int, max_tests: int) -> float:
+    """
+    Shaped reward for test ordering.
+    Returns value around 0.5 — positive if relevant, negative if not.
+    """
+    base = 0.5
+    delta = 0.15 if is_relevant else -0.05
+    if tests_used > max_tests:
+        delta -= 0.08 * (tests_used - max_tests)
+    return _clamp(base + delta)
 
 
-# ── EASY task grader ──────────────────────────────────────────────────────────
-
-def _grade_vital_signs(action: TriageAction, patient: Dict[str, Any], step: int) -> float:
-    reward = 0.0
-    dist = _level_distance(action.triage_level, patient["triage_level"])
+def _grade_easy(
+    action: SubmitTriageAction,
+    patient: Dict[str, Any],
+    step: int,
+    tests_used: int,
+) -> float:
+    r = 0.0
+    dist = _level_dist(action.triage_level, patient["triage_level"])
 
     if dist == 0:
-        reward += 0.55          # correct level — kept below 0.99 ceiling room
+        r += 0.55
         if step <= 2:
-            reward += 0.09      # efficiency bonus (total 0.64, still < 0.99)
+            r += 0.08   # efficiency bonus
     elif abs(dist) == 1:
-        reward += 0.18          # one level off
+        r += 0.18
     elif dist < 0:
-        reward -= 0.25          # under-triage penalty
+        r -= 0.30       # under-triage penalty
 
-    reward += _condition_match(action.suspected_condition, patient["condition_category"])
+    r += _condition_hit(action.suspected_condition, patient["condition_category"])
 
-    if action.reasoning and len(action.reasoning) > 20:
-        reward += 0.09          # reasoning present
+    if len(action.reasoning) > 30:
+        r += 0.06       # reasoning quality
 
-    return _clamp(reward)
+    if tests_used >= 1:
+        r += 0.05       # tool use bonus
 
-
-def _feedback_vital_signs(action: TriageAction, patient: Dict[str, Any]) -> str:
-    dist = _level_distance(action.triage_level, patient["triage_level"])
-    if dist == 0:
-        return f"[CORRECT] triage level. Ground truth: {patient['triage_level']}."
-    elif dist > 0:
-        return (
-            f"[WARNING] Over-triaged (you said {action.triage_level}, "
-            f"truth is {patient['triage_level']})."
-        )
-    else:
-        return (
-            f"[CRITICAL] UNDER-TRIAGE! You said {action.triage_level}, "
-            f"truth is {patient['triage_level']}. This could harm the patient."
-        )
+    return _clamp(r)
 
 
-# ── MEDIUM task grader ────────────────────────────────────────────────────────
-
-def _grade_differential(action: TriageAction, patient: Dict[str, Any], step: int) -> float:
-    reward = 0.0
-    dist = _level_distance(action.triage_level, patient["triage_level"])
+def _grade_medium(
+    action: SubmitTriageAction,
+    patient: Dict[str, Any],
+    step: int,
+    tests_used: int,
+) -> float:
+    r = 0.0
+    dist = _level_dist(action.triage_level, patient["triage_level"])
 
     if dist == 0:
-        reward += 0.38
+        r += 0.42
+        if step <= 3:
+            r += 0.08
     elif abs(dist) == 1:
-        reward += 0.13
+        r += 0.14
     elif dist < 0:
-        reward -= 0.22
+        r -= 0.28
 
-    reward += _condition_match(action.suspected_condition, patient["condition_category"])
+    r += _condition_hit(action.suspected_condition, patient["condition_category"])
 
-    test_score = _test_overlap(action.recommended_tests, patient["relevant_tests"])
-    reward += 0.23 * test_score
+    if len(action.reasoning) > 50:
+        r += 0.05
 
-    if step <= 2 and dist == 0:
-        reward += 0.09          # early correct bonus
+    # Tool use bonus scales with tests ordered
+    r += min(tests_used, 2) * 0.06
 
-    if len(action.reasoning) > 40:
-        reward += 0.05
-
-    return _clamp(reward)
+    return _clamp(r)
 
 
-def _feedback_differential(action: TriageAction, patient: Dict[str, Any]) -> str:
-    lines = []
-    dist = _level_distance(action.triage_level, patient["triage_level"])
+def _grade_hard(
+    action: SubmitTriageAction,
+    patient: Dict[str, Any],
+    step: int,
+    tests_used: int,
+) -> float:
+    r = 0.0
+    dist = _level_dist(action.triage_level, patient["triage_level"])
+
+    weight = 0.28 + 0.04 * min(step, 5)
     if dist == 0:
-        lines.append(f"[CORRECT] level: {patient['triage_level']}")
-    else:
-        direction = "over-triaged" if dist > 0 else "UNDER-TRIAGED"
-        icon = "[WARNING]" if dist > 0 else "[CRITICAL]"
-        lines.append(
-            f"{icon} {direction}: you said {action.triage_level}, "
-            f"truth={patient['triage_level']}"
-        )
-    overlap = _test_overlap(action.recommended_tests, patient["relevant_tests"])
-    lines.append(
-        f"Tests: {overlap * 100:.0f}% of key tests ordered. "
-        f"Key tests: {', '.join(patient['relevant_tests'][:3])}"
-    )
-    return " | ".join(lines)
-
-
-# ── HARD task grader ──────────────────────────────────────────────────────────
-
-def _grade_polytrauma(action: TriageAction, patient: Dict[str, Any], step: int) -> float:
-    reward = 0.0
-    dist = _level_distance(action.triage_level, patient["triage_level"])
-
-    level_weight = 0.28 + 0.05 * min(step, 4)   # step1→0.33 … step5→0.48, stays < 0.99
-    if dist == 0:
-        reward += level_weight
+        r += weight
     elif abs(dist) == 1:
-        reward += level_weight * 0.28
+        r += weight * 0.28
     elif dist < 0:
-        reward -= 0.35
+        r -= 0.38       # hardest penalty for hard task
 
-    reward += _condition_match(action.suspected_condition, patient["condition_category"])
-
-    test_score = _test_overlap(action.recommended_tests, patient["relevant_tests"])
-    reward += 0.18 * test_score
+    r += _condition_hit(action.suspected_condition, patient["condition_category"])
 
     if step >= 3 and len(action.reasoning) > 80:
-        reward += 0.09
-    elif step < 3 and len(action.reasoning) > 30:
-        reward += 0.04
+        r += 0.08
+    elif len(action.reasoning) > 30:
+        r += 0.04
 
-    return _clamp(reward)
+    r += min(tests_used, 3) * 0.05
 
-
-def _feedback_polytrauma(action: TriageAction, patient: Dict[str, Any]) -> str:
-    dist = _level_distance(action.triage_level, patient["triage_level"])
-    parts = []
-    if dist == 0:
-        parts.append("[CORRECT] level: immediate")
-    elif dist < 0:
-        parts.append(
-            f"CRITICAL UNDER-TRIAGE: you said {action.triage_level}. "
-            "This is a multi-system emergency!"
-        )
-    else:
-        parts.append(f"[WARNING] Over-triaged: {action.triage_level}")
-    parts.append(f"Condition hints: {patient['condition_category']} pattern")
-    return " | ".join(parts)
+    return _clamp(r)
 
 
-# ── Task registry ─────────────────────────────────────────────────────────────
+def _feedback(action: SubmitTriageAction, patient: Dict[str, Any], tests_used: int) -> str:
+    dist = _level_dist(action.triage_level, patient["triage_level"])
+    tag = "[CORRECT]" if dist == 0 else ("[WARNING]" if dist > 0 else "[CRITICAL]")
+    return (
+        f"{tag} said={action.triage_level} truth={patient['triage_level']} "
+        f"tests_used={tests_used}"
+    )
+
 
 @dataclass
 class TaskSpec:
@@ -185,44 +147,34 @@ class TaskSpec:
     difficulty: str
     description: str
     max_steps: int
-    grade_step: Callable
-    get_feedback: Callable
+    max_tests: int
+    grade_fn: Callable
+    feedback_fn: Callable = _feedback
 
 
 TASK_REGISTRY: Dict[str, TaskSpec] = {
     "vital_signs_triage": TaskSpec(
         name="vital_signs_triage",
         difficulty="easy",
-        description=(
-            "Classify a patient's urgency level from vitals and chief complaint only. "
-            "One step to decide. Tests recommended but not required."
-        ),
-        max_steps=3,
-        grade_step=_grade_vital_signs,
-        get_feedback=_feedback_vital_signs,
+        description="Classify urgency from vitals and complaint. 1 test allowed.",
+        max_steps=4,
+        max_tests=1,
+        grade_fn=_grade_easy,
     ),
     "differential_diagnosis": TaskSpec(
         name="differential_diagnosis",
         difficulty="medium",
-        description=(
-            "Identify the most likely clinical condition and recommend appropriate "
-            "diagnostic tests from a multi-symptom patient. Up to 5 steps, "
-            "more history revealed each step."
-        ),
-        max_steps=5,
-        grade_step=_grade_differential,
-        get_feedback=_feedback_differential,
+        description="Identify condition + triage. 2 tests allowed. Relevant tests earn bonus.",
+        max_steps=6,
+        max_tests=2,
+        grade_fn=_grade_medium,
     ),
     "polytrauma_cascade": TaskSpec(
         name="polytrauma_cascade",
         difficulty="hard",
-        description=(
-            "Multi-system trauma or complex medical emergency. Critical findings "
-            "cascade across 5 steps. Agent must continuously update its assessment. "
-            "Designed to challenge frontier LLMs."
-        ),
-        max_steps=5,
-        grade_step=_grade_polytrauma,
-        get_feedback=_feedback_polytrauma,
+        description="Multi-system emergency. 3 tests. Cascading findings. Frontier-model challenge.",
+        max_steps=8,
+        max_tests=3,
+        grade_fn=_grade_hard,
     ),
 }
