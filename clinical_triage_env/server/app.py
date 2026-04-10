@@ -53,19 +53,31 @@ async def get_tasks():
 @app.post("/reset")
 async def reset(request: Request):
     """Start new episode."""
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    
     task_name = body.get("task_name")
     seed = body.get("seed")
+    print(f"[SERVER] Reset requested: task={task_name}, seed={seed}")
+    
     obs = env.reset(task_name=task_name, seed=seed)
     return obs.model_dump()
 
 @app.post("/step")
 async def step(request: Request):
     """Execute action."""
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or missing JSON body")
+        
     raw_action = body.get("action")
     if not raw_action:
         raise HTTPException(status_code=400, detail="Missing 'action' in request body")
+    
+    print(f"[SERVER] Step requested with action type: {raw_action.get('action_type', 'unknown')}")
     
     try:
         # Validate into Union type
@@ -73,6 +85,7 @@ async def step(request: Request):
         obs = env.step(action)
         return obs.model_dump()
     except Exception as e:
+        print(f"[SERVER] Step error: {str(e)}")
         raise HTTPException(status_code=422, detail=str(e))
 
 @app.get("/health")

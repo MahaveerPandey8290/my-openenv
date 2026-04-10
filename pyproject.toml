@@ -19,5 +19,8 @@ dependencies = [
   "requests>=2.31.0",
 ]
 
+[project.scripts]
+server = "clinical_triage_env.server.app:main"
+
 [tool.setuptools.packages.find]
 include = ["clinical_triage_env*", "clinical_triage_3d*"]

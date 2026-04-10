@@ -63,6 +63,10 @@ class ClinicalTriageEnv(Environment):
         if task_name and task_name in self.VALID_TASKS:
             self.task_name = task_name
 
+        # Thoroughly clear any old state to prevent cross-episode leakage
+        self._state = None
+        self._patient = None
+
         spec = TASK_REGISTRY[self.task_name]
         self._episode_seed = seed
         self._patient = generate_patient(self.task_name, seed=seed)
@@ -107,7 +111,9 @@ class ClinicalTriageEnv(Environment):
         Execute an action. Supports OrderTestAction and SubmitTriageAction.
         """
         if self._state is None or self._patient is None:
-            raise RuntimeError("Call reset() before step().")
+            # Defensive check: if state is lost, try to recover or fail gracefully
+            print("[ENVIRONMENT] Warning: step() called without valid state. This usually means reset() failed or session is lost.")
+            raise RuntimeError("Environment state missing. You must call reset() successfully before step().")
 
         self._state.steps_taken += 1
         step_n = self._state.steps_taken
