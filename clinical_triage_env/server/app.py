@@ -19,6 +19,17 @@ app = create_fastapi_app(
     observation_cls=PatientObservation,
 )
 
+@app.get("/")
+def root():
+    """Root endpoint for discovery and health diagnostics."""
+    return {
+        "env": "ClinicalTriageEnv",
+        "version": "3.0.0",
+        "status": "running",
+        "tasks": list(TASK_REGISTRY.keys()),
+        "endpoints": ["/health", "/metadata", "/schema", "/reset", "/step", "/tasks"]
+    }
+
 # Preserve original app metadata
 app.title = "ClinicalTriageEnv"
 app.description = "True RL environment for clinical triage with tool use and GRPO training."

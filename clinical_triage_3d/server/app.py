@@ -20,6 +20,17 @@ app = create_fastapi_app(
     observation_cls=VisualObservation,
 )
 
+@app.get("/")
+def root():
+    """Root endpoint for discovery and health diagnostics."""
+    return {
+        "env": "ClinicalTriageEnv 3D",
+        "version": "4.0.0",
+        "status": "running",
+        "tasks": ["single_patient_rescue", "ward_prioritisation", "mass_casualty_incident"],
+        "endpoints": ["/health", "/metadata", "/schema", "/reset", "/step", "/tasks"]
+    }
+
 app.title = "ClinicalTriageEnv 3D"
 app.description = "3D embodied medical agent RL environment with visual observations."
 app.version = "4.0.0"
