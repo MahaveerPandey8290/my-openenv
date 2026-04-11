@@ -3,21 +3,39 @@ Baseline inference script — Meta OpenEnv hackathon spec.
 Strict stdout format: [START] [STEP]... [END]
 All scores clamped to strictly open (0.01, 0.99).
 """
-import json, os, sys, time, traceback
-from typing import List, Optional
+import json, sys, time, traceback
+import os
 from openai import OpenAI
 
-API_BASE_URL = os.environ.get("API_BASE_URL")
-API_KEY = os.environ.get("API_KEY")
-MODEL_NAME = os.environ.get("MODEL_NAME")
 ENV_BASE_URL = os.getenv("CLINICAL_TRIAGE_BASE_URL", "http://localhost:7860")
 BENCHMARK = "clinical_triage_env"
 MAX_STEPS = 8
 
-if not API_KEY:
-    raise ValueError("API_KEY required by hackathon proxy")
+# ── Environment variables — DO NOT change these variable names ────────────────
+# The validator injects API_BASE_URL and API_KEY into the container.
+# HF_TOKEN is kept as fallback for local testing only.
+API_BASE_URL: str = os.getenv(
+    "API_BASE_URL",
+    "https://router.huggingface.co/v1"   # default for local dev only
+)
+MODEL_NAME: str = os.getenv(
+    "MODEL_NAME",
+    "Qwen/Qwen2.5-72B-Instruct"          # default for local dev only
+)
+# CRITICAL: read API_KEY first (injected by validator), fallback to HF_TOKEN
+API_KEY: str = os.getenv("API_KEY") or os.getenv("HF_TOKEN") or ""
 
-llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+if not API_KEY:
+    raise ValueError(
+        "Neither API_KEY nor HF_TOKEN environment variable is set. "
+        "The validator injects API_KEY — ensure it is not overridden."
+    )
+
+# CRITICAL: use API_BASE_URL and API_KEY — never hardcode or bypass
+llm_client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY,
+)
 TASKS = ["vital_signs_triage", "differential_diagnosis", "polytrauma_cascade"]
 
 SYSTEM = """You are a clinical triage AI. Respond ONLY with JSON.
@@ -61,7 +79,7 @@ def build_prompt(obs):
 
 
 def call_llm(prompt):
-    r = llm.chat.completions.create(
+    r = llm_client.chat.completions.create(
         model=MODEL_NAME, max_tokens=400, temperature=0.3,
         messages=[{"role": "system", "content": SYSTEM},
                   {"role": "user", "content": prompt}],
