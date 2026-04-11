@@ -22,11 +22,11 @@ BASE_URL = "http://localhost:7860"
 # Initialize LLM client (same as inference.py)
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
+API_KEY = os.getenv("API_KEY", os.getenv("HF_TOKEN"))
 
 llm_client = None
-if HF_TOKEN:
-    llm_client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+if API_KEY:
+    llm_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 SYSTEM_PROMPT = """You are a clinical triage AI assistant in an emergency department.
 
@@ -351,16 +351,16 @@ def main():
     print(f"Testing against: {BASE_URL}\n")
     
     # Check if model is configured
-    if not llm_client:
-        print("⚠️  WARNING: HF_TOKEN not set. Install your model API credentials:\n")
+    if not API_KEY:
+        print("⚠️  WARNING: API_KEY or HF_TOKEN not set. Install your model API credentials:\n")
         print("  Windows (PowerShell):")
-        print("    $env:HF_TOKEN='your-token-here'")
+        print("    $env:API_KEY='your-token-here'")
         print("    python test_model.py\n")
         print("  Windows (CMD):")
-        print("    set HF_TOKEN=your-token-here")
+        print("    set API_KEY=your-token-here")
         print("    python test_model.py\n")
         print("  Linux/Mac:")
-        print("    export HF_TOKEN='your-token-here'")
+        print("    export API_KEY='your-token-here'")
         print("    python test_model.py\n")
         return
     

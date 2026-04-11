@@ -8,16 +8,16 @@ from typing import List, Optional
 from openai import OpenAI
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+API_KEY = os.getenv("API_KEY", os.getenv("HF_TOKEN"))
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
 ENV_BASE_URL = os.getenv("CLINICAL_TRIAGE_BASE_URL", "http://localhost:7860")
 BENCHMARK = "clinical_triage_env"
 MAX_STEPS = 8
 
-if not HF_TOKEN:
-    raise ValueError("HF_TOKEN required")
+if not API_KEY:
+    raise ValueError("API_KEY or HF_TOKEN required")
 
-llm = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 TASKS = ["vital_signs_triage", "differential_diagnosis", "polytrauma_cascade"]
 
 SYSTEM = """You are a clinical triage AI. Respond ONLY with JSON.
