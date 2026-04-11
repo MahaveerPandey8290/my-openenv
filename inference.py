@@ -7,15 +7,15 @@ import json, os, sys, time, traceback
 from typing import List, Optional
 from openai import OpenAI
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-API_KEY = os.getenv("API_KEY", os.getenv("HF_TOKEN"))
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+API_BASE_URL = os.environ.get("API_BASE_URL")
+API_KEY = os.environ.get("API_KEY")
+MODEL_NAME = os.environ.get("MODEL_NAME")
 ENV_BASE_URL = os.getenv("CLINICAL_TRIAGE_BASE_URL", "http://localhost:7860")
 BENCHMARK = "clinical_triage_env"
 MAX_STEPS = 8
 
 if not API_KEY:
-    raise ValueError("API_KEY or HF_TOKEN required")
+    raise ValueError("API_KEY required by hackathon proxy")
 
 llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 TASKS = ["vital_signs_triage", "differential_diagnosis", "polytrauma_cascade"]

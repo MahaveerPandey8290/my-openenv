@@ -59,6 +59,8 @@ training:
   rollout_func: train_grpo.rollout_func
   reward_func: train_grpo.clinical_reward_func
   train_script: train_grpo.py
+  api_base_url: ${API_BASE_URL}
+  model_name: ${MODEL_NAME}
 
 endpoints:
   reset: "POST /reset  — body: {task_name?, seed?}"

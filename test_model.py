@@ -20,9 +20,9 @@ if env_path.exists():
 BASE_URL = "http://localhost:7860"
 
 # Initialize LLM client (same as inference.py)
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-API_KEY = os.getenv("API_KEY", os.getenv("HF_TOKEN"))
+API_BASE_URL = os.environ.get("API_BASE_URL")
+MODEL_NAME = os.environ.get("MODEL_NAME")
+API_KEY = os.environ.get("API_KEY")
 
 llm_client = None
 if API_KEY:
